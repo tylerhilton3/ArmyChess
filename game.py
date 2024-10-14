@@ -1,44 +1,35 @@
-import pygame
+import pygame as pg
 import sys
 
-# Initialize Pygame
-pygame.init()
+pg.init()
 
-# Set up constants
-# BOARD_MARGIN will be dynamically calculated later in the game loop based on screen size
 BOARD_SIZE = 8
 MIN_WIDTH, MIN_HEIGHT = 640, 480
-screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+screen = pg.display.set_mode((1280, 720), pg.RESIZABLE)
 SQUARE_SIZE = int(screen.get_height() * 0.8) // BOARD_SIZE
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-LIGHT_BROWN = (200, 165, 120)
+WHITE, BLACK = (255, 255, 255), (0, 0, 0)
+LIGHT_BROWN = (220, 185, 140)
 DARK_BROWN = (120, 60, 40)
 
-# Load background image
-background = pygame.image.load('images/woodbackground.jpeg')
-background = pygame.transform.smoothscale(background, (screen.get_width(), screen.get_height()))
-pygame.display.set_caption('Simple Chess Game')
+background = pg.transform.smoothscale(pg.image.load('images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+pg.display.set_caption('Army Chess')
 
-# Load piece images (assuming you have them in an 'images' folder)
 original_pieces = {
-    'b_king': pygame.image.load('images/b_king.png').convert_alpha(),
-    'b_queen': pygame.image.load('images/b_queen.png').convert_alpha(),
-    'b_rook': pygame.image.load('images/b_rook.png').convert_alpha(),
-    'b_bishop': pygame.image.load('images/b_bishop.png').convert_alpha(),
-    'b_knight': pygame.image.load('images/b_knight.png').convert_alpha(),
-    'b_pawn': pygame.image.load('images/b_pawn.png').convert_alpha(),
-    'w_king': pygame.image.load('images/w_king.png').convert_alpha(),
-    'w_queen': pygame.image.load('images/w_queen.png').convert_alpha(),
-    'w_rook': pygame.image.load('images/w_rook.png').convert_alpha(),
-    'w_bishop': pygame.image.load('images/w_bishop.png').convert_alpha(),
-    'w_knight': pygame.image.load('images/w_knight.png').convert_alpha(),
-    'w_pawn': pygame.image.load('images/w_pawn.png').convert_alpha(),
+    'b_king': pg.image.load('images/b_king.png').convert_alpha(),
+    'b_queen': pg.image.load('images/b_queen.png').convert_alpha(),
+    'b_rook': pg.image.load('images/b_rook.png').convert_alpha(),
+    'b_bishop': pg.image.load('images/b_bishop.png').convert_alpha(),
+    'b_knight': pg.image.load('images/b_knight.png').convert_alpha(),
+    'b_pawn': pg.image.load('images/b_pawn.png').convert_alpha(),
+    'w_king': pg.image.load('images/w_king.png').convert_alpha(),
+    'w_queen': pg.image.load('images/w_queen.png').convert_alpha(),
+    'w_rook': pg.image.load('images/w_rook.png').convert_alpha(),
+    'w_bishop': pg.image.load('images/w_bishop.png').convert_alpha(),
+    'w_knight': pg.image.load('images/w_knight.png').convert_alpha(),
+    'w_pawn': pg.image.load('images/w_pawn.png').convert_alpha(),
 }
 
-# Create a copy for resized pieces
 pieces = original_pieces.copy()
 
 # Resize pieces to fit squares
@@ -47,7 +38,7 @@ def resize_pieces():
     global SQUARE_SIZE, pieces
     SQUARE_SIZE = (min(screen.get_width(), screen.get_height()) - int(screen.get_height() * 0.1) * 2) // BOARD_SIZE
     for key in pieces:
-        pieces[key] = pygame.transform.smoothscale(original_pieces[key], (SQUARE_SIZE, SQUARE_SIZE))
+        pieces[key] = pg.transform.smoothscale(original_pieces[key], (SQUARE_SIZE, SQUARE_SIZE))
 
 resize_pieces()
 
@@ -65,14 +56,14 @@ def draw_board():
     
     # Draw black border
     border_width = SQUARE_SIZE // 8
-    border_rect = pygame.Rect(board_x - border_width, board_y - border_width, board_width + 2 * border_width, board_height + 2 * border_width)
-    pygame.draw.rect(screen, BLACK, border_rect)
+    border_rect = pg.Rect(board_x - border_width, board_y - border_width, board_width + 2 * border_width, board_height + 2 * border_width)
+    pg.draw.rect(screen, BLACK, border_rect)
     
     # Draw squares
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             color = colors[(row + col) % 2]
-            pygame.draw.rect(screen, color, (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            pg.draw.rect(screen, color, (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
 # Draw pieces on the board
 def draw_pieces(board):
@@ -104,14 +95,14 @@ board = initial_board()
 # Main game loop
 running = True
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
             running = False
-        elif event.type == pygame.VIDEORESIZE:
+        elif event.type == pg.VIDEORESIZE:
             new_width = max(event.w, MIN_WIDTH)
             new_height = max(event.h, MIN_HEIGHT)
-            screen = pygame.display.set_mode((new_width, new_height), pygame.RESIZABLE)
-            background = pygame.transform.smoothscale(pygame.image.load('images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+            screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
+            background = pg.transform.smoothscale(pg.image.load('images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
             resize_pieces()
 
     # Draw everything
@@ -119,7 +110,7 @@ while running:
     draw_pieces(board)
 
     # Update the display
-    pygame.display.flip()
+    pg.display.flip()
 
-pygame.quit()
+pg.quit()
 sys.exit()
