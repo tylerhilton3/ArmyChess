@@ -46,17 +46,11 @@ def update_timers():
     if current_player == 'w':
         WHITE_TIME -= time_delta
         if WHITE_TIME <= 0:
-            draw_endgame_message("Black wins on time!")
-            pg.time.delay(3000)
-            pg.quit()
-            sys.exit()
+            end_game("Black wins on time!")
     else:
         BLACK_TIME -= time_delta
         if BLACK_TIME <= 0:
-            draw_endgame_message("White wins on time!")
-            pg.time.delay(3000)
-            pg.quit()
-            sys.exit()
+            end_game("White wins on time!")
 
 
 
@@ -279,11 +273,19 @@ def draw_endgame_message(message):
     overlay.fill((0, 0, 0))
 
     font_large = pg.font.SysFont(None, 72)
-    text_surface = font_large.render(message, True, WHITE)
-    text_rect = text_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
+    font_small = pg.font.SysFont(None, 48)
+
+    text_surface1 = font_large.render(message, True, WHITE)
+    text_rect1 = text_surface1.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
+
+    light_gray = (200, 200, 200)
+    text_surface2 = font_small.render("Click anywhere to restart", True, light_gray)
+    text_rect2 = text_surface2.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 + 50))
 
     screen.blit(overlay, (0, 0))
-    screen.blit(text_surface, text_rect)
+    screen.blit(text_surface1, text_rect1)
+    screen.blit(text_surface2, text_rect2)
+
     pg.display.flip()
 
 
@@ -521,6 +523,18 @@ def get_valid_moves(piece, position, board):
 
 ### GAME FUNCTIONALITY
 
+def wait_for_click():
+    waiting = True
+    while waiting:
+        for event in pg.event.get():
+            if event.type == pg.MOUSEBUTTONDOWN:
+                waiting = False
+    sys.exit()
+
+def end_game(message):
+    draw_endgame_message(message)
+    wait_for_click()
+
 def handle_click(board, pos):
     global selected_piece, selected_position, current_player, en_passant_target, castling_rights, valid_moves, half_move_counter
     board_x, board_y = [(screen.get_width() - 8 * SQUARE_SIZE) // 2, (screen.get_height() - 8 * SQUARE_SIZE) // 2]
@@ -600,30 +614,18 @@ def handle_click(board, pos):
                 opponent_color = 'b' if current_player == 'w' else 'w'
                 store_board_state(board)
                 
-                if is_checkmate(opponent_color, board):
-                    draw_endgame_message(f"Checkmate! {"White" if opponent_color.capitalize() == "W" else "Black"} is checkmated. {"White" if opponent_color.capitalize() == "B" else "Black"} wins!")
-                    pg.time.delay(3000)
-                    pg.quit()
-                    sys.exit()
 
-                
+                if is_checkmate(opponent_color, board):
+                    end_game(f"Checkmate! {'White' if opponent_color.capitalize() == 'W' else 'Black'} is checkmated. {'White' if opponent_color.capitalize() == 'B' else 'Black'} wins!")
+
                 if is_stalemate(opponent_color, board):
-                    draw_endgame_message("Draw by stalemate!")
-                    pg.time.delay(3000)
-                    pg.quit()
-                    sys.exit()
+                    end_game("Draw by stalemate!")
 
                 if is_50_move():
-                    draw_endgame_message("Draw by 50-move rule!")
-                    pg.time.delay(3000)
-                    pg.quit()
-                    sys.exit()
+                    end_game("Draw by 50-move rule!")
                 
                 if threefoldrep():
-                    draw_endgame_message("Draw by 3-fold repetition!")
-                    pg.time.delay(3000)
-                    pg.quit()
-                    sys.exit()
+                    end_game("Draw by 3-fold repetition!")
 
                 
                 current_player = 'b' if current_player == 'w' else 'w'
