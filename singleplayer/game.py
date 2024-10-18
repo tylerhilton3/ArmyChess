@@ -6,9 +6,17 @@ pg.init()
 pg.mixer.init()
 pg.display.set_caption('Army Chess')
 
+
+
+### COLOR AND STYLES
+
 MIN_WIDTH, MIN_HEIGHT = 640, 480
 screen = pg.display.set_mode((1280, 720), pg.RESIZABLE)
 SQUARE_SIZE = int(screen.get_height() * 0.8) // 8
+BOARD_MARGIN = int(screen.get_height() * 0.1)
+
+background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+font = pg.font.SysFont(None, 36)
 
 WHITE, BLACK = (255, 255, 255), (0, 0, 0)
 LIGHT_BROWN = (237, 214, 176)
@@ -21,9 +29,13 @@ DARK_GRAY = (158, 116, 84)
 DARK_GRAY_HIGHLIGHT = (188, 168, 64)
 LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
 
+
+
+### TIMER
+
 WHITE_TIME = 300
-BLACK_TIME = 300  
-last_tick = pg.time.get_ticks()  
+BLACK_TIME = 300
+last_tick = pg.time.get_ticks()
 
 def update_timers():
     global WHITE_TIME, BLACK_TIME, last_tick
@@ -46,8 +58,140 @@ def update_timers():
             pg.quit()
             sys.exit()
 
+
+
+### IMAGES
+
+def load_image(name):
+    return pg.image.load(f'singleplayer/images/{name}.png').convert_alpha()
+
+original_pieces = {
+    'b_king': load_image('b_king'),
+    'b_queen': load_image('b_queen'),
+    'b_rook': load_image('b_rook'),
+    'b_bishop': load_image('b_bishop'),
+    'b_knight': load_image('b_knight'),
+    'b_pawn': load_image('b_pawn'),
+    'w_king': load_image('w_king'),
+    'w_queen': load_image('w_queen'),
+    'w_rook': load_image('w_rook'),
+    'w_bishop': load_image('w_bishop'),
+    'w_knight': load_image('w_knight'),
+    'w_pawn': load_image('w_pawn'),
+}
+pieces = original_pieces.copy()
+master_volume = 1.0
+
+
+
+### SOUND
+
+def load_sound(name, goofy):
+    filepath = f'singleplayer/sounds{goofy*"goofy"}/{name}.mp3'
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"{filepath} does not exist.")
+    sound = pg.mixer.Sound(filepath)
+    sound.set_volume(master_volume)
+    return sound
+
+goofy = False
+sounds = {
+    'move': load_sound('move', goofy),
+    'capture': load_sound('capture', goofy),
+    'castle': load_sound('castle', goofy),
+    'move_check': load_sound('move-check', goofy),
+    'promote': load_sound('promote', goofy),
+}
+
+def set_master_volume(volume):
+    global master_volume
+    master_volume = volume
+    for sound in sounds.values():
+        if sound:
+            sound.set_volume(master_volume)
+set_master_volume(0.2)
+
+
+
+### BOARD AND GAME DATA
+
+game_state = 'playing'
+endgame_message = ""
+selected_piece = None
+selected_position = None
+current_player = 'w'
+en_passant_target = None
+castling_rights = {
+    'w': {'K': True, 'Q': True},
+    'b': {'K': True, 'Q': True}
+}
+valid_moves = []
+last_move = {'w': None, 'b': None}
+half_move_counter = 0
+board_states = []
+board = [
+    ['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
+    ['b_pawn'] * 8,
+    ['--'] * 8,
+    ['--'] * 8,
+    ['--'] * 8,
+    ['--'] * 8,
+    ['w_pawn'] * 8,
+    ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']
+]
+
+def store_board_state(board):
+    board_string = ''.join([''.join(row) for row in board]) + current_player
+    board_states.append(board_string)
+
+def resize_pieces():
+    global SQUARE_SIZE, pieces
+    SQUARE_SIZE = (min(screen.get_width(), screen.get_height()) - int(screen.get_height() * 0.1) * 2) // 8
+    for key in pieces:
+        pieces[key] = pg.transform.smoothscale(original_pieces[key], (SQUARE_SIZE, SQUARE_SIZE))
+
+resize_pieces()
+
+
+
+### DRAWING FUNCTIONS
+
+def draw_board():
+    screen.blit(background, (0, 0))
+    board_width = 8 * SQUARE_SIZE
+    board_height = 8 * SQUARE_SIZE
+    board_x = (screen.get_width() - board_width) // 2
+    board_y = (screen.get_height() - board_height) // 2
+    colors = [LIGHT_BROWN, DARK_BROWN]
+    border_width = SQUARE_SIZE // 8
+    border_rect = pg.Rect(board_x - border_width, board_y - border_width, board_width + 2 * border_width, board_height + 2 * border_width)
+    pg.draw.rect(screen, BLACK, border_rect)
+    opponent_color = 'b' if current_player == 'w' else 'w'
+    for row in range(8):
+        for col in range(8):
+            base_color = colors[(row + col) % 2]
+            color = base_color
+            if selected_position == (row, col):
+                color = LIGHT_YELLOW if base_color == LIGHT_BROWN else DARK_YELLOW
+            elif last_move[opponent_color]:
+                from_pos, to_pos = last_move[opponent_color]
+                if from_pos == (row, col) or to_pos == (row, col):
+                    color = LIGHT_YELLOW if base_color == LIGHT_BROWN else DARK_YELLOW
+            rect = pg.Rect(board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
+            pg.draw.rect(screen, color, rect)
+
+def draw_pieces(board):
+    board_width = 8 * SQUARE_SIZE
+    board_height = 8 * SQUARE_SIZE
+    board_x = (screen.get_width() - board_width) // 2
+    board_y = (screen.get_height() - board_height) // 2
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece != '--':
+                screen.blit(pieces[piece], (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE))
+
 def draw_timers():
-    
     white_minutes = int(WHITE_TIME // 60)
     white_seconds = int(WHITE_TIME % 60)
     black_minutes = int(BLACK_TIME // 60)
@@ -94,126 +238,57 @@ def draw_timers():
     screen.blit(white_timer_surface, white_timer_rect.topleft)
     screen.blit(black_timer_surface, black_timer_rect.topleft)
 
-board = [
-    ['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
-    ['b_pawn'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['w_pawn'] * 8,
-    ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']
-]
+def draw_turn_indicator():
+    text = f"{'White' if current_player == 'w' else 'Black'}'s Turn"
+    img = font.render(text, True, BLACK)
+    screen.blit(img, (20, 20))
 
-def load_image(name):
-    return pg.image.load(f'singleplayer/images/{name}.png').convert_alpha()
-
-original_pieces = {
-    'b_king': load_image('b_king'),
-    'b_queen': load_image('b_queen'),
-    'b_rook': load_image('b_rook'),
-    'b_bishop': load_image('b_bishop'),
-    'b_knight': load_image('b_knight'),
-    'b_pawn': load_image('b_pawn'),
-    'w_king': load_image('w_king'),
-    'w_queen': load_image('w_queen'),
-    'w_rook': load_image('w_rook'),
-    'w_bishop': load_image('w_bishop'),
-    'w_knight': load_image('w_knight'),
-    'w_pawn': load_image('w_pawn'),
-}
-pieces = original_pieces.copy()
-master_volume = 1.0
-
-def load_sound(name, goofy):
-    filepath = f'singleplayer/sounds{goofy*"goofy"}/{name}.mp3'
-    if not os.path.isfile(filepath):
-        raise FileNotFoundError(f"{filepath} does not exist.")
-    sound = pg.mixer.Sound(filepath)
-    sound.set_volume(master_volume)
-    return sound
-
-goofy = False
-sounds = {
-    'move': load_sound('move', goofy),
-    'capture': load_sound('capture', goofy),
-    'castle': load_sound('castle', goofy),
-    'move_check': load_sound('move-check', goofy),
-    'promote': load_sound('promote', goofy),
-}
-
-def set_master_volume(volume):
-    global master_volume
-    master_volume = volume
-    for sound in sounds.values():
-        if sound:
-            sound.set_volume(master_volume)
-
-set_master_volume(0.2)
-
-background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
-font = pg.font.SysFont(None, 36)
-
-current_player = 'w'
-en_passant_target = None
-castling_rights = {
-    'w': {'K': True, 'Q': True},
-    'b': {'K': True, 'Q': True}
-}
-valid_moves = []
-last_move = {'w': None, 'b': None}
-half_move_counter = 0
-board_states = []
-
-def store_board_state(board):
-    
-    board_string = ''.join([''.join(row) for row in board]) + current_player
-    board_states.append(board_string)
-
-BOARD_MARGIN = int(screen.get_height() * 0.1)
-
-def resize_pieces():
-    global SQUARE_SIZE, pieces
-    SQUARE_SIZE = (min(screen.get_width(), screen.get_height()) - int(screen.get_height() * 0.1) * 2) // 8
-    for key in pieces:
-        pieces[key] = pg.transform.smoothscale(original_pieces[key], (SQUARE_SIZE, SQUARE_SIZE))
-
-resize_pieces()
-
-def draw_board():
-    screen.blit(background, (0, 0))
+def draw_valid_moves():
+    if not selected_piece:
+        return
     board_width = 8 * SQUARE_SIZE
     board_height = 8 * SQUARE_SIZE
     board_x = (screen.get_width() - board_width) // 2
     board_y = (screen.get_height() - board_height) // 2
-    colors = [LIGHT_BROWN, DARK_BROWN]
-    border_width = SQUARE_SIZE // 8
-    border_rect = pg.Rect(board_x - border_width, board_y - border_width, board_width + 2 * border_width, board_height + 2 * border_width)
-    pg.draw.rect(screen, BLACK, border_rect)
-    opponent_color = 'b' if current_player == 'w' else 'w'
-    for row in range(8):
-        for col in range(8):
-            base_color = colors[(row + col) % 2]
-            color = base_color
-            if selected_position == (row, col):
-                color = LIGHT_YELLOW if base_color == LIGHT_BROWN else DARK_YELLOW
-            elif last_move[opponent_color]:
-                from_pos, to_pos = last_move[opponent_color]
-                if from_pos == (row, col) or to_pos == (row, col):
-                    color = LIGHT_YELLOW if base_color == LIGHT_BROWN else DARK_YELLOW
-            rect = pg.Rect(board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
-            pg.draw.rect(screen, color, rect)
+    for move in valid_moves:
+        (row, col), move_type = move
+        base_color = LIGHT_BROWN if (row + col) % 2 == 0 else DARK_BROWN
+        highlight_color = LIGHT_GRAY
+        if base_color == LIGHT_BROWN:
+            highlight_color = LIGHT_GRAY_HIGHLIGHT if (row, col) == selected_position else LIGHT_GRAY
+        elif base_color == DARK_BROWN:
+            highlight_color = DARK_GRAY_HIGHLIGHT if (row, col) == selected_position else DARK_GRAY
+        elif base_color == LIGHT_YELLOW:
+            highlight_color = LIGHT_GRAY_HIGHLIGHT
+        elif base_color == DARK_YELLOW:
+            highlight_color = DARK_GRAY_HIGHLIGHT
+        center_x = board_x + col * SQUARE_SIZE + SQUARE_SIZE // 2
+        center_y = board_y + row * SQUARE_SIZE + SQUARE_SIZE // 2
+        if move_type == 'move':
+            radius = SQUARE_SIZE // 6
+            circle_surface = pg.Surface((SQUARE_SIZE, SQUARE_SIZE), pg.SRCALPHA)
+            pg.draw.circle(circle_surface, highlight_color, (SQUARE_SIZE // 2, SQUARE_SIZE // 2), radius)
+            screen.blit(circle_surface, (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE))
+        elif move_type == 'capture':
+            radius = SQUARE_SIZE // 2 - SQUARE_SIZE // 16
+            pg.draw.circle(screen, highlight_color, (center_x, center_y), radius, width=SQUARE_SIZE // 16)
 
-def draw_pieces(board):
-    board_width = 8 * SQUARE_SIZE
-    board_height = 8 * SQUARE_SIZE
-    board_x = (screen.get_width() - board_width) // 2
-    board_y = (screen.get_height() - board_height) // 2
-    for row in range(8):
-        for col in range(8):
-            piece = board[row][col]
-            if piece != '--':
-                screen.blit(pieces[piece], (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE))
+def draw_endgame_message(message):
+    overlay = pg.Surface((screen.get_width(), screen.get_height()))
+    overlay.set_alpha(200)
+    overlay.fill((0, 0, 0))
+
+    font_large = pg.font.SysFont(None, 72)
+    text_surface = font_large.render(message, True, WHITE)
+    text_rect = text_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
+
+    screen.blit(overlay, (0, 0))
+    screen.blit(text_surface, text_rect)
+    pg.display.flip()
+
+
+
+### GAME LOGIC
 
 def is_in_check(player_color, board):
     king_position = None
@@ -339,9 +414,6 @@ def promote_pawn(color):
                 pg.quit()
                 sys.exit()
 
-selected_piece = None
-selected_position = None
-
 def is_valid_move(piece, start, end, board, check_check=True):
     global en_passant_target
     if start == end:
@@ -445,10 +517,9 @@ def get_valid_moves(piece, position, board):
     
     return valid_moves
 
-def draw_turn_indicator():
-    text = f"{'White' if current_player == 'w' else 'Black'}'s Turn"
-    img = font.render(text, True, BLACK)
-    screen.blit(img, (20, 20))
+
+
+### GAME FUNCTIONALITY
 
 def handle_click(board, pos):
     global selected_piece, selected_position, current_player, en_passant_target, castling_rights, valid_moves, half_move_counter
@@ -571,54 +642,9 @@ def handle_click(board, pos):
                 selected_position = (row, col)
                 valid_moves = get_valid_moves(selected_piece, selected_position, board)
 
-def draw_valid_moves():
-    if not selected_piece:
-        return
-    board_width = 8 * SQUARE_SIZE
-    board_height = 8 * SQUARE_SIZE
-    board_x = (screen.get_width() - board_width) // 2
-    board_y = (screen.get_height() - board_height) // 2
-    for move in valid_moves:
-        (row, col), move_type = move
-        base_color = LIGHT_BROWN if (row + col) % 2 == 0 else DARK_BROWN
-        highlight_color = LIGHT_GRAY
-        if base_color == LIGHT_BROWN:
-            highlight_color = LIGHT_GRAY_HIGHLIGHT if (row, col) == selected_position else LIGHT_GRAY
-        elif base_color == DARK_BROWN:
-            highlight_color = DARK_GRAY_HIGHLIGHT if (row, col) == selected_position else DARK_GRAY
-        elif base_color == LIGHT_YELLOW:
-            highlight_color = LIGHT_GRAY_HIGHLIGHT
-        elif base_color == DARK_YELLOW:
-            highlight_color = DARK_GRAY_HIGHLIGHT
-        center_x = board_x + col * SQUARE_SIZE + SQUARE_SIZE // 2
-        center_y = board_y + row * SQUARE_SIZE + SQUARE_SIZE // 2
-        if move_type == 'move':
-            radius = SQUARE_SIZE // 6
-            circle_surface = pg.Surface((SQUARE_SIZE, SQUARE_SIZE), pg.SRCALPHA)
-            pg.draw.circle(circle_surface, highlight_color, (SQUARE_SIZE // 2, SQUARE_SIZE // 2), radius)
-            screen.blit(circle_surface, (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE))
-        elif move_type == 'capture':
-            radius = SQUARE_SIZE // 2 - SQUARE_SIZE // 16
-            pg.draw.circle(screen, highlight_color, (center_x, center_y), radius, width=SQUARE_SIZE // 16)
 
-def draw_endgame_message(message):
-    
-    overlay = pg.Surface((screen.get_width(), screen.get_height()))
-    overlay.set_alpha(200)
-    overlay.fill((0, 0, 0))  
-    font_large = pg.font.SysFont(None, 72)
-    text_surface = font_large.render(message, True, WHITE)
-    text_rect = text_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
 
-    screen.blit(overlay, (0, 0))
-    screen.blit(text_surface, text_rect)
-    pg.display.flip()
-
-    while True:
-        for event in pg.event.get():
-            if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_RETURN):
-                pg.quit()
-                sys.exit()
+### MAIN GAME LOOP
 
 running = True
 while running:
