@@ -1,6 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import socket
 import threading
-import pickle
+from utils.networking import send_msg, recv_msg
 
 # Server settings
 HOST = '127.0.0.1'
@@ -25,7 +29,7 @@ def broadcast_game_state():
     global game_state
     for client in clients:
         try:
-            client['conn'].sendall(pickle.dumps({'type': 'game_state', 'data': game_state}))
+            send_msg(client['conn'], {'type': 'game_state', 'data': game_state})
         except:
             print("Error sending game state to a client.")
 
@@ -40,26 +44,22 @@ def handle_client(conn, addr):
         player_color = 'b'
     else:
         # Reject additional clients
-        conn.sendall(pickle.dumps({'type': 'error', 'message': 'Game is full.'}))
+        send_msg(conn, {'type': 'error', 'message': 'Game is full.'})
         conn.close()
         return
 
     # Add client to the list with assigned color
     clients.append({'conn': conn, 'addr': addr, 'color': player_color})
 
-    # Send the assigned color to the client
-    conn.sendall(pickle.dumps({'type': 'color', 'color': player_color}))
-
-    # Send the initial game state to the client
-    conn.sendall(pickle.dumps({'type': 'game_state', 'data': game_state}))
+    send_msg(conn, {'type': 'color', 'color': player_color})
+    send_msg(conn, {'type': 'game_state', 'data': game_state})
 
     while True:
         try:
-            data = conn.recv(4096)
-            if not data:
+            move_data = recv_msg(conn)
+            if not move_data:
+                print(f"Client {addr} disconnected.")
                 break
-
-            move_data = pickle.loads(data)
 
             if move_data['type'] == 'move':
                 # Update the game state
@@ -80,6 +80,7 @@ def handle_client(conn, addr):
     conn.close()
     clients = [c for c in clients if c['conn'] != conn]
     print(f"Disconnected from {addr}")
+
 
 def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:

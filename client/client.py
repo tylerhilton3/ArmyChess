@@ -1,20 +1,27 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pygame as pg
 import sys
 import os
-
 import socket
-import pickle  # To send and receive the game state as a serialized object
+import pickle
 import select
+import threading
+import traceback
+from utils.networking import send_msg, recv_msg
 
 # Server connection details
-HOST = '127.0.0.1'  # Server's IP address
-PORT = 65432        # The same port as the server
+HOST = '127.0.0.1'
+PORT = 65432
+
+def debug(msg):
+    print(f"DEBUG: {msg}")
 
 # Create a socket and connect to the server
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((HOST, PORT))
-
-
 
 pg.init()
 pg.mixer.init()
@@ -96,6 +103,21 @@ castling_rights = {
     'b': {'K': True, 'Q': True}
 }
 
+game_state = None
+
+def receive_game_state():
+    try:
+        data = recv_msg(client_socket)
+        if data is None:
+            print("No data received in receive_game_state()")
+            return None
+        return data
+    except Exception as e:
+        print(f"Error receiving game state: {e}")
+        traceback.print_exc()
+        return None
+
+
 def receive_message():
     ready_to_read, _, _ = select.select([client_socket], [], [], 0.1)
     if ready_to_read:
@@ -103,48 +125,55 @@ def receive_message():
         return pickle.loads(data)
     return None
 
-def receive_game_state():
+def receive_game_state_in_background():
+    global game_state
     while True:
         try:
-            data = client_socket.recv(4096)
-            if not data:
-                continue
-
-            game_state = pickle.loads(data)
-
-            # Debug: Print the received game state to verify it
-            print("Received game state:", game_state)
-
-            return game_state  # Return the full game state
-
+            new_state = receive_game_state()
+            if new_state and 'type' in new_state:
+                if new_state['type'] == 'game_state':
+                    game_state = new_state['data']
+                    print("Received new game state:", game_state)
+                elif new_state['type'] == 'color':
+                    global current_player
+                    current_player = new_state['color']
+                    print("Updated game state:", game_state)
         except Exception as e:
-            print(f"Error in receiving game state: {e}")
-            continue
+            print(f"Error in background thread: {e}")
+            traceback.print_exc()
 
+# Start the receiving thread
+threading.Thread(target=receive_game_state_in_background, daemon=True).start()
 
 def receive_initial_data():
-    try:
-        data = client_socket.recv(4096)  # Receive data from the server
-        message = pickle.loads(data)  # Unpickle the data
-        print("Received message:", message)
-
-        # Check the type of message and handle player color assignment
-        if 'color' in message:
-            return message['color']  # Only return the color (either 'w' or 'b')
+    global current_player, game_state
+    while True:
+        data = receive_game_state()
+        if data:
+            if 'type' in data:
+                if data['type'] == 'color':
+                    current_player = data['color']
+                    print(f"You are playing as {'White' if current_player == 'w' else 'Black'}")
+                elif data['type'] == 'game_state':
+                    game_state = data['data']
+                    print("Received initial game state:", game_state)
+                    return
+            else:
+                print("Unexpected data format:", data)
         else:
-            raise ValueError("Unexpected message format.")
-    except Exception as e:
-        print(f"Error receiving initial data: {e}")
-        return None
+            print("No data received from server")
 
+receive_initial_data()
 
-
-current_player, game_state = receive_initial_data()
-print(f"You are playing as {'White' if current_player == 'w' else 'Black'}")
+if current_player:
+    print(f"You are playing as {'White' if current_player == 'w' else 'Black'}")
+else:
+    print("Error receiving player color.")
+    sys.exit()
 
 def send_move(move_data):
     move_data['type'] = 'move'
-    client_socket.sendall(pickle.dumps(move_data))
+    send_msg(client_socket, move_data)
 
 game_state = receive_game_state()
 
@@ -625,7 +654,6 @@ def draw_valid_moves():
             radius = SQUARE_SIZE // 2 - SQUARE_SIZE // 16
             pg.draw.circle(screen, highlight_color, (center_x, center_y), radius, width=SQUARE_SIZE // 16)
 
-current_player = receive_initial_data()
 
 if current_player:
     print(f"You are playing as {current_player}.")
@@ -634,48 +662,53 @@ else:
     sys.exit()
 
 running = True
-while running:
-    game_state = receive_game_state()
-    # Continuously receive the updated game state from the server
-    new_state = receive_game_state()
-    if current_player:
-        print(f"You are playing as {current_player}.")
-    else:
-        print("Error receiving player color.")
-        sys.exit()
-    if new_state:
-        game_state = new_state  # Update game state only if new data is received
+debug("entering main loop")
 
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        elif event.type == pg.VIDEORESIZE:
-            new_width = max(event.w, MIN_WIDTH)
-            new_height = max(event.h, MIN_HEIGHT)
-            screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
-            background = pg.transform.smoothscale(pg.image.load('images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
-            resize_pieces()
-        elif event.type == pg.MOUSEBUTTONDOWN:
-            if game_state:  # Ensure game_state is valid
-                handle_click(game_state['board'], event.pos)
-
-    if game_state:
-        # Now handle the game state and other events (draw board, handle clicks, etc.)
+try:
+    while running:
+        debug("Processing events")
+        screen.fill((255, 255, 255))  # Fill screen with white
+        pg.draw.circle(screen, (255, 0, 0), (screen.get_width() // 2, screen.get_height() // 2), 50)  # Draw a red circle
+        pg.display.flip()
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
+            elif event.type == pg.VIDEORESIZE:
+                # Handle window resize
+                new_width = max(event.w, MIN_WIDTH)
+                new_height = max(event.h, MIN_HEIGHT)
+                screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
+                background = pg.transform.smoothscale(pg.image.load('images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+                resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                handle_click(game_state['board'], event.pos)
+                # Handle mouse click
+                if game_state:  # Ensure game_state is valid
+                    handle_click(game_state['board'], event.pos)
+        screen.fill((0, 0, 0))
+        # Check if we received new game state in the background thread
+        debug("drawing game state")
+        if game_state:
+            debug(f"Game state: {game_state}")
+            draw_board()
+            draw_pieces(game_state['board'])
+            draw_valid_moves()
+            draw_turn_indicator()
+        else:
+            debug("no game state available")
+            # Draw a message if game state is not received yet
+            font = pg.font.Font(None, 36)
+            text = font.render("Waiting for game state...", True, (255, 255, 255))
+            screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2, screen.get_height() // 2))
+        pg.display.flip()  # Update the display
+        debug("display updated")
+except Exception as e:
+    print(f"An error occurred: {e}")
+    traceback.print_exc()
+finally:
+    pg.quit()
+    client_socket.close()
 
-        # Drawing and updating the screen
-        draw_board()
-        draw_pieces(game_state['board'])
-        draw_valid_moves()
-        draw_turn_indicator()
 
-        pg.display.flip()
-    else:  
-        print("No game state received yet.")
 
 # When quitting
 pg.quit()
