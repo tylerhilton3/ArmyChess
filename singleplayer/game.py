@@ -21,18 +21,16 @@ DARK_GRAY = (158, 116, 84)
 DARK_GRAY_HIGHLIGHT = (188, 168, 64)
 LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
 
-WHITE_TIME = 3  # 5 minutes in seconds (adjust as needed)
-BLACK_TIME = 300  # 5 minutes in seconds (adjust as needed)
-last_tick = pg.time.get_ticks()  # To track elapsed time
+WHITE_TIME = 300
+BLACK_TIME = 300  
+last_tick = pg.time.get_ticks()  
 
 def update_timers():
     global WHITE_TIME, BLACK_TIME, last_tick
-
     current_tick = pg.time.get_ticks()
-    time_delta = (current_tick - last_tick) / 1000  # Convert milliseconds to seconds
+    time_delta = (current_tick - last_tick) / 1000  
     last_tick = current_tick
 
-    # Deduct time from the current player's clock
     if current_player == 'w':
         WHITE_TIME -= time_delta
         if WHITE_TIME <= 0:
@@ -49,7 +47,7 @@ def update_timers():
             sys.exit()
 
 def draw_timers():
-    # Convert remaining time to minutes:seconds format
+    
     white_minutes = int(WHITE_TIME // 60)
     white_seconds = int(WHITE_TIME % 60)
     black_minutes = int(BLACK_TIME // 60)
@@ -58,15 +56,15 @@ def draw_timers():
     white_time_text = f"White: {white_minutes:02}:{white_seconds:02}"
     black_time_text = f"Black: {black_minutes:02}:{black_seconds:02}"
 
-    # Render the timer text surfaces
+    
     white_timer_surface = font.render(white_time_text, True, WHITE)
     black_timer_surface = font.render(black_time_text, True, BLACK)
 
-    # Get the rect (bounding box) of the text surface to center the background
-    white_timer_rect = white_timer_surface.get_rect(topleft=(20, 60))  # White's timer position
-    black_timer_rect = black_timer_surface.get_rect(topleft=(20, 100))  # Black's timer position
+    
+    white_timer_rect = white_timer_surface.get_rect(topleft=(20, 60))  
+    black_timer_rect = black_timer_surface.get_rect(topleft=(20, 100))  
 
-    # Create background surface slightly larger than the text (for padding)
+    
     padding = 10
     white_bg_rect = pg.Rect(
         white_timer_rect.left - padding // 2,
@@ -81,21 +79,20 @@ def draw_timers():
         black_timer_rect.height + padding
     )
 
-    # Create semi-transparent background surfaces for the timers
+    
     white_bg_surface = pg.Surface(white_bg_rect.size)
-    white_bg_surface.fill(DARK_BROWN)  # Black background
+    white_bg_surface.fill(DARK_BROWN)  
 
     black_bg_surface = pg.Surface(black_bg_rect.size)
     black_bg_surface.fill(DARK_BROWN)
 
-    # Blit the background surfaces behind the timers
+    
     screen.blit(white_bg_surface, white_bg_rect.topleft)
     screen.blit(black_bg_surface, black_bg_rect.topleft)
 
-    # Blit the text on top of the backgrounds
+    
     screen.blit(white_timer_surface, white_timer_rect.topleft)
     screen.blit(black_timer_surface, black_timer_rect.topleft)
-
 
 board = [
     ['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
@@ -125,7 +122,6 @@ original_pieces = {
     'w_knight': load_image('w_knight'),
     'w_pawn': load_image('w_pawn'),
 }
-
 pieces = original_pieces.copy()
 master_volume = 1.0
 
@@ -153,7 +149,7 @@ def set_master_volume(volume):
         if sound:
             sound.set_volume(master_volume)
 
-set_master_volume(0.1)
+set_master_volume(0.2)
 
 background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
 font = pg.font.SysFont(None, 36)
@@ -170,7 +166,7 @@ half_move_counter = 0
 board_states = []
 
 def store_board_state(board):
-    # Convert the board to a string representation to track positions
+    
     board_string = ''.join([''.join(row) for row in board]) + current_player
     board_states.append(board_string)
 
@@ -230,30 +226,23 @@ def is_in_check(player_color, board):
             break
 
     if king_position is None:
-        return False  # No king on the board (edge case)
-
-    print(f"{player_color} king's position: {king_position}")
+        return False
     opponent_color = 'b' if player_color == 'w' else 'w'
 
-    # Check for threats from all opponent pieces
+    
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
             if piece.startswith(opponent_color):
-                # Check if the piece can move to the king's position
+                
                 if is_valid_move(piece, (row, col), king_position, board, check_check=False):
-                    print(f"{opponent_color} piece at {(row, col)} can check {player_color}'s king.")
                     return True
     return False
 
 def is_checkmate(player_color, board):
     if not is_in_check(player_color, board):
-        print(f"{player_color} is not in check.")
         return False
 
-    print(f"{player_color} is in check. Checking for valid moves...")
-
-    # Try to find a valid move that would prevent checkmate
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
@@ -264,39 +253,24 @@ def is_checkmate(player_color, board):
                     new_board = [r.copy() for r in board]
                     new_board[end_pos[0]][end_pos[1]] = piece
                     new_board[row][col] = '--'
-
-                    # Check if the player is still in check after this move
                     if not is_in_check(player_color, new_board):
-                        print(f"Found a valid move for {player_color}'s piece at {(row, col)} to {end_pos}. Not checkmate.")
-                        return False  # There's a valid move to escape check
-
-    print(f"{player_color} is checkmated!")
-    return True  # No valid moves and in check, so it's checkmate
+                        return False  
+    return True  
 
 def is_stalemate(player_color, board):
     if is_in_check(player_color, board):
-        print(f"{player_color} is in check, so it can't be stalemate.")
         return False
-
-    # Debugging: Print statement to verify the lack of valid moves
-    print(f"{player_color} is not in check. Checking for valid moves...")
-
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
             if piece.startswith(player_color):
                 valid_moves = get_valid_moves(piece, (row, col), board)
-                # Debugging: Print valid moves for each piece
-                print(f"{player_color}'s piece {piece} at {(row, col)} has valid moves: {valid_moves}")
                 if valid_moves:
-                    print(f"{player_color} has valid moves, so it's not stalemate.")
                     return False
-
-    print(f"{player_color} has no valid moves left and is not in check. Stalemate!")
     return True
 
 def threefoldrep():
-    # Count how many times the current board state has occurred
+    
     current_state = ''.join([''.join(row) for row in board]) + current_player
     occurrences = board_states.count(current_state)
     
@@ -304,11 +278,8 @@ def threefoldrep():
         return True
     return False
 
-
 def is_50_move():
-    # If half_move_counter reaches 100, it means 50 moves have been made without a pawn move or capture
     if half_move_counter >= 10:
-        print("50-move rule triggered! It's a draw.")
         return True
     return False
 
@@ -471,8 +442,7 @@ def get_valid_moves(piece, position, board):
                 move_type = 'move' if target_piece == '--' else 'capture'
                 valid_moves.append(((row, col), move_type))
 
-    # Debugging: Print valid moves for this piece
-    print(f"{piece} at {position} has valid moves: {valid_moves}")
+    
     return valid_moves
 
 def draw_turn_indicator():
@@ -489,7 +459,7 @@ def handle_click(board, pos):
 
     if 0 <= row < 8 and 0 <= col < 8:
         piece_at_square = board[row][col]
-        # Check if a piece is selected
+        
         if piece_at_square != '--' and piece_at_square[0] == current_player:
             selected_piece = piece_at_square
             selected_position = (row, col)
@@ -497,7 +467,7 @@ def handle_click(board, pos):
         elif selected_piece:
             valid_move = is_valid_move(selected_piece, selected_position, (row, col), board)
             if valid_move:
-                target_piece = board[row][col]  # Assign target_piece here when a valid move is attempted
+                target_piece = board[row][col]  
                 en_passant_capture = False
                 if selected_piece[2:] == 'pawn' and (row, col) == en_passant_target:
                     en_passant_capture = True
@@ -508,7 +478,7 @@ def handle_click(board, pos):
                 board[selected_position[0]][selected_position[1]] = '--'
                 last_move[current_player] = (selected_position, (row, col))
                 
-                # Reset the half-move counter for a pawn move or capture
+                
                 if selected_piece[2:] == 'pawn' or target_piece != '--':
                     half_move_counter = 0
                 else:
@@ -545,7 +515,7 @@ def handle_click(board, pos):
                         if sounds['move']:
                             sounds['move'].play()
 
-                # Update castling rights if king or rook has moved
+                
                 if selected_piece[2:] == 'king':
                     castling_rights[current_player]['K'] = False
                     castling_rights[current_player]['Q'] = False
@@ -555,22 +525,18 @@ def handle_click(board, pos):
                     elif selected_position[1] == 7:
                         castling_rights[current_player]['K'] = False
 
-                # Check for checkmate after every move
+                
                 opponent_color = 'b' if current_player == 'w' else 'w'
                 store_board_state(board)
                 
                 if is_checkmate(opponent_color, board):
-                    print(f"Checkmate! {opponent_color.capitalize()} is checkmated. {current_player.capitalize()} wins!")
-                    
                     draw_endgame_message(f"Checkmate! {"White" if opponent_color.capitalize() == "W" else "Black"} is checkmated. {"White" if opponent_color.capitalize() == "B" else "Black"} wins!")
                     pg.time.delay(3000)
                     pg.quit()
                     sys.exit()
 
-                # Check for stalemate
+                
                 if is_stalemate(opponent_color, board):
-                    print("Draw by stalemate!")
-
                     draw_endgame_message("Draw by stalemate!")
                     pg.time.delay(3000)
                     pg.quit()
@@ -583,14 +549,12 @@ def handle_click(board, pos):
                     sys.exit()
                 
                 if threefoldrep():
-                    print("Draw by 3-fold repetition!")
-
                     draw_endgame_message("Draw by 3-fold repetition!")
                     pg.time.delay(3000)
                     pg.quit()
                     sys.exit()
 
-                # Switch the turn
+                
                 current_player = 'b' if current_player == 'w' else 'w'
                 piece_type = selected_piece[2:]
                 if piece_type == 'pawn' and abs(selected_position[0] - row) == 2:
@@ -606,9 +570,6 @@ def handle_click(board, pos):
                 selected_piece = board[row][col]
                 selected_position = (row, col)
                 valid_moves = get_valid_moves(selected_piece, selected_position, board)
-
-
-
 
 def draw_valid_moves():
     if not selected_piece:
@@ -641,22 +602,18 @@ def draw_valid_moves():
             pg.draw.circle(screen, highlight_color, (center_x, center_y), radius, width=SQUARE_SIZE // 16)
 
 def draw_endgame_message(message):
-    # Create a semi-transparent overlay for the message
+    
     overlay = pg.Surface((screen.get_width(), screen.get_height()))
     overlay.set_alpha(200)
-    overlay.fill((0, 0, 0))  # Black overlay
-
-    # Render the message text
+    overlay.fill((0, 0, 0))  
     font_large = pg.font.SysFont(None, 72)
     text_surface = font_large.render(message, True, WHITE)
     text_rect = text_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
 
-    # Draw the overlay and message
     screen.blit(overlay, (0, 0))
     screen.blit(text_surface, text_rect)
     pg.display.flip()
 
-    # Wait for the user to close the game
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_RETURN):
@@ -676,10 +633,6 @@ while running:
             resize_pieces()
         elif event.type == pg.MOUSEBUTTONDOWN:
             handle_click(board, event.pos)
-    if is_50_move():
-        print("Draw by the 50-move rule!")
-        pg.quit()
-        sys.exit()
     update_timers()
     draw_board()
     draw_pieces(board)
