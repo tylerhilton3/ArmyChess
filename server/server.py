@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import socket
 import threading
-from utils.networking import send_msg, recv_msg
+from ..utils.networking import send_msg, recv_msg
 
 # Server settings
 HOST = '127.0.0.1'
