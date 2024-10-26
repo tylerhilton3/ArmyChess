@@ -1,22 +1,42 @@
 import socket
+import threading
 import pickle
 
-# Client setup
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(('localhost', 5555))  # Server's IP and Port
+# Server configuration
+HOST = '127.0.0.1'  # Localhost
+PORT = 12345        # Server port
 
-while True:
-    # Receiving data from the server
-    try:
-        message = client.recv(4096)  # Buffer size
-        if not message:
-            break  # If no message, the server likely disconnected
-        message = pickle.loads(message)
+# Function to handle incoming messages from the server
+def receive_messages(client_socket):
+    while True:
+        try:
+            # Receive and deserialize message from the server
+            message = pickle.loads(client_socket.recv(1024))
+            print("\nReceived:", message)
+        except EOFError:
+            print("Disconnected from the server.")
+            client_socket.close()
+            break
+
+# Main client function
+def main():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+
+    # Start a thread to listen for incoming messages
+    thread = threading.Thread(target=receive_messages, args=(client_socket,))
+    thread.start()
+
+    # Main loop for sending messages
+    while True:
+        message = input("You: ")
+        if message.lower() == 'exit':
+            break
         
-        # Display the board (or any other data received)
-        for row in message:
-            print(row)
-    except:
-        break  # Handle any errors, e.g., server disconnects
+        # Serialize and send the message
+        client_socket.sendall(pickle.dumps(message))
+    
+    client_socket.close()
 
-client.close()
+if __name__ == "__main__":
+    main()
