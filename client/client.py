@@ -1,22 +1,53 @@
 import pygame as pg
 import sys
 import os
-import pickle
-import socket
+import firebase_admin
+from firebase_admin import credentials, db
+import time as t
+
+cred = credentials.Certificate("client/firebaseprivatekey.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
+})
+
+
+game_id = 'game1'
+
+game = db.reference(f'/games/{game_id}')
+whiteconn = db.reference(f"games/{game_id}/connections/white")
+blackconn = db.reference(f"games/{game_id}/connections/black")
+
+
+blackconnected = False
+
+def wait_for_connection(event):
+    global blackconnected
+    if event.data == True:
+        print("Black has connected!")
+        blackconnected = True
+
+if not whiteconn.get():
+    player = 1
+    opp = 2
+    print(f"You are White.")
+    whiteconn.set(True)
+    p2listener = blackconn.listen(wait_for_connection)
+    while not blackconnected:
+        t.sleep(1.5)
+        print("Waiting for Black...")
+    p2listener.close()
+else:
+    player = 2
+    opp = 1
+    print("You are Black.")
+    blackconn.set(True)
+    blackconnected = True
+
 
 pg.init()
 pg.mixer.init()
 pg.display.set_caption('Army Chess')
 
-
-
-### DATA TRANSFER
-
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(('localhost', 5555))
-
-def send(data):
-    pickle.dumps(data)
 
 
 ### COLOR AND STYLES
@@ -654,7 +685,6 @@ def handle_click(board, pos):
                 selected_piece = board[row][col]
                 selected_position = (row, col)
                 valid_moves = get_valid_moves(selected_piece, selected_position, board)
-    send(board)
 
 
 
