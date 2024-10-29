@@ -19,7 +19,11 @@
                 ["--", "--", "--", "--", "--", "--", "--", "--"],
                 ["w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn"],
                 ["w_rook", "w_knight", "w_bishop", "w_queen", "w_king", "w_bishop", "w_knight", "w_rook"]
-            ]
+            ],
+            "timers": {
+                "white": "5:00",
+                "black": "5:00"
+            }
         }
     }
 }

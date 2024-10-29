@@ -10,7 +10,6 @@ firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
 })
 
-
 game_id = 'game1'
 
 game = db.reference(f'/games/{game_id}')
@@ -31,11 +30,10 @@ if not whiteconn.get():
     opp = 2
     print(f"You are White.")
     whiteconn.set(True)
-    p2listener = blackconn.listen(wait_for_connection)
     while not blackconnected:
         t.sleep(1.5)
         print("Waiting for Black...")
-    p2listener.close()
+        blackconnected = blackconn.get()
 else:
     player = 2
     opp = 1
@@ -44,6 +42,7 @@ else:
     blackconnected = True
 
 
+print("Finished connecting!")
 pg.init()
 pg.mixer.init()
 pg.display.set_caption('Army Chess')
@@ -166,15 +165,18 @@ last_move = {'w': None, 'b': None}
 half_move_counter = 0
 board_states = []
 board = [
-    ['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
-    ['b_pawn'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['--'] * 8,
-    ['w_pawn'] * 8,
-    ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']
+    ["b_rook", "b_knight", "b_bishop", "b_queen", "b_king", "b_bishop", "b_knight", "b_rook"],
+    ["b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn"],
+    ["w_rook", "w_knight", "w_bishop", "w_queen", "w_king", "w_bishop", "w_knight", "w_rook"]
 ]
+
+def invert(board):
+    return [row[::-1] for row in board[::-1]]
 
 def store_board_state(board):
     board_string = ''.join([''.join(row) for row in board]) + current_player
@@ -389,7 +391,6 @@ def is_stalemate(player_color, board):
     return True
 
 def threefoldrep():
-    
     current_state = ''.join([''.join(row) for row in board]) + current_player
     occurrences = board_states.count(current_state)
     
@@ -565,6 +566,9 @@ def get_valid_moves(piece, position, board):
 
 ### GAME FUNCTIONALITY
 
+async def push_gamestate(current_player, castling_rights, board, timers):
+    pass
+
 def wait_for_click():
     waiting = True
     while waiting:
@@ -691,25 +695,46 @@ def handle_click(board, pos):
 ### MAIN GAME LOOP
 
 running = True
-while running:
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        elif event.type == pg.VIDEORESIZE:
-            new_width = max(event.w, MIN_WIDTH)
-            new_height = max(event.h, MIN_HEIGHT)
-            screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
-            background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
-            resize_pieces()
-        elif event.type == pg.MOUSEBUTTONDOWN:
-            handle_click(board, event.pos)
-    update_timers()
-    draw_board()
-    draw_pieces(board)
-    draw_valid_moves()
-    draw_turn_indicator()
-    draw_timers()
-    pg.display.flip()
+if player == 1:
+    while running:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
+            elif event.type == pg.VIDEORESIZE:
+                new_width = max(event.w, MIN_WIDTH)
+                new_height = max(event.h, MIN_HEIGHT)
+                screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
+                background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+                resize_pieces()
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                handle_click(board, event.pos)
+        update_timers()
+        draw_board()
+        draw_pieces(board)
+        draw_valid_moves()
+        draw_turn_indicator()
+        draw_timers()
+        pg.display.flip()
+elif player == 2:
+    while running:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
+            elif event.type == pg.VIDEORESIZE:
+                new_width = max(event.w, MIN_WIDTH)
+                new_height = max(event.h, MIN_HEIGHT)
+                screen = pg.display.set_mode((new_width, new_height), pg.RESIZABLE)
+                background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
+                resize_pieces()
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                handle_click(board, event.pos)
+        update_timers()
+        draw_board()
+        draw_pieces(invert(board))
+        draw_valid_moves()
+        draw_turn_indicator()
+        draw_timers()
+        pg.display.flip()
 
 pg.quit()
 sys.exit()

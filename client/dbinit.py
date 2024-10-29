@@ -2,16 +2,12 @@ import json
 import firebase_admin
 from firebase_admin import credentials, db
 
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate('client/firebaseprivatekey.json')  # Replace with your Service Account JSON path
+cred = credentials.Certificate('client/firebaseprivatekey.json')
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'  # Replace with your Firebase Realtime Database URL
+    'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
 })
 
-# Load JSON data from game.json
 
-
-# Overwrite the database root with data from game.json
 def dbinit():
     with open('client/game.json', 'r') as file:
         data = json.load(file)
