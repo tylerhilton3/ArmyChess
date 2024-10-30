@@ -1,16 +1,15 @@
-board = [
-    ["b_rook", "b_knight", "b_bishop", "b_queen", "b_king", "b_bishop", "b_knight", "b_rook"],
-    ["b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn"],
-    ["w_rook", "w_knight", "w_bishop", "w_queen", "w_king", "w_bishop", "w_knight", "w_rook"]
-]
+import pygame as pg
+import sys
+import os
+import firebase_admin
+from firebase_admin import credentials, db
+import time as t
+import json
 
-def invert(board):
-    return [row[::-1] for row in board[::-1]]
+cred = credentials.Certificate("client/firebaseprivatekey.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
+})
 
-print(board)
-print(invert(board))
+pee = db.reference("players").get()
+print(bool(pee))

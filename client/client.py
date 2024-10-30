@@ -4,27 +4,59 @@ import os
 import firebase_admin
 from firebase_admin import credentials, db
 import time as t
+import json
 
 cred = credentials.Certificate("client/firebaseprivatekey.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
 })
 
-game_id = 'game1'
+
+def dbinit():
+    gamesnode = db.reference("games")
+    if gamesnode.get() is None:  # Explicitly check for None
+        print("Initializing 'games' node as it does not exist.")
+        gamesnode.set({})  # Create an empty 'games' node
+    else:
+        print("'games' node already exists.")
+
+
+def gameinit(game_id):
+    with open('client/game.json', 'r') as file:
+        data = json.load(file)
+    ref = db.reference(f'/games/game{game_id}')
+    ref.set(data)
+
+def remove_old_games():
+    for gameid, gamedata in db.reference("games").get().items():
+        connections = gamedata['connections']
+        if connections.get('black') == False and connections.get('white') == False:
+            db.reference('games').child(f"game{gameid}").delete()
+            print(f'{game_id} has been deleted.')
+
+dbinit()
+remove_old_games()
+
+### Get a game id
+game_id = 0
+gameexist = True
+while gameexist:
+    game_id += 1
+    current_game = db.reference(f"games/game{game_id}").get()
+    gameexist = bool(db.reference(f"games/game{game_id}").get())
+
+gameinit(game_id)
+
+while True:
+    pass
 
 game = db.reference(f'/games/{game_id}')
-whiteconn = db.reference(f"games/{game_id}/connections/white")
-blackconn = db.reference(f"games/{game_id}/connections/black")
+whiteconn = db.reference(f"games/game{game_id}/connections/white")
+blackconn = db.reference(f"games/game{game_id}/connections/black")
 
 
 blackconnected = False
-
-def wait_for_connection(event):
-    global blackconnected
-    if event.data == True:
-        print("Black has connected!")
-        blackconnected = True
-
+correct = False
 if not whiteconn.get():
     player = 1
     opp = 2
@@ -38,11 +70,23 @@ else:
     player = 2
     opp = 1
     print("You are Black.")
+    while not correct:
+        try:
+            GAME_ID = int(input("Which game would you like to connect to?: "))
+            if f"game{GAME_ID}" not in db.reference("games").get():
+                print("Game ID does not exist. Please try another.")
+                correct = False
+            else:
+                correct = True
+        except:
+            print("Please enter an integer game ID.")            
     blackconn.set(True)
     blackconnected = True
 
 
 print("Finished connecting!")
+
+
 pg.init()
 pg.mixer.init()
 pg.display.set_caption('Army Chess')
@@ -115,9 +159,10 @@ original_pieces = {
     'w_pawn': load_image('w_pawn'),
 }
 pieces = original_pieces.copy()
-master_volume = 1.0
 
-
+iconpath = "client/assets/images/icon64.ico"
+icon = pg.image.load(iconpath)
+pg.display.set_icon(icon)
 
 ### SOUND
 
@@ -126,7 +171,6 @@ def load_sound(name, goofy):
     if not os.path.isfile(filepath):
         raise FileNotFoundError(f"{filepath} does not exist.")
     sound = pg.mixer.Sound(filepath)
-    sound.set_volume(master_volume)
     return sound
 
 goofy = False
@@ -139,17 +183,16 @@ sounds = {
 }
 
 def set_master_volume(volume):
-    global master_volume
-    master_volume = volume
     for sound in sounds.values():
         if sound:
-            sound.set_volume(master_volume)
+            sound.set_volume(volume)
 set_master_volume(0.2)
 
 
 
 ### BOARD AND GAME DATA
 
+gref = db.reference("/games/game{gameid}")
 game_state = 'playing'
 endgame_message = ""
 selected_piece = None
@@ -174,6 +217,13 @@ board = [
     ["w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn"],
     ["w_rook", "w_knight", "w_bishop", "w_queen", "w_king", "w_bishop", "w_knight", "w_rook"]
 ]
+
+
+async def push_gamestate(game_state,current_player, castling_rights, board, timers):
+    pass
+
+async def pull_gamestate():
+    pass
 
 def invert(board):
     return [row[::-1] for row in board[::-1]]
@@ -566,8 +616,6 @@ def get_valid_moves(piece, position, board):
 
 ### GAME FUNCTIONALITY
 
-async def push_gamestate(current_player, castling_rights, board, timers):
-    pass
 
 def wait_for_click():
     waiting = True
