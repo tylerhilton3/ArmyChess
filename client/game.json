@@ -3,7 +3,7 @@
         "white": false,
         "black": false
     },
-    "current player" : "w",
+    "current_player" : "w",
     "castling_rights": {
         "w": {"K": true, "Q": true},
         "b": {"K": true, "Q": true}
@@ -22,10 +22,8 @@
         "white": 300,
         "black": 300
     },
-    "game_state": "playing",
     "en_passant_target": null,
     "last_move": {"w": null, "b": null},
     "half_move_counter": 0,
-    "board_states": [],
-    "end_game_message": ""
+    "board_states": []
 }

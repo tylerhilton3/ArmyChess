@@ -194,34 +194,23 @@ set_master_volume(0.2)
 
 ### BOARD AND GAME DATA
 
-gref = db.reference("/games/game{gameid}")
-game_state = 'playing'
-endgame_message = ""
+gref = db.reference(f"/games/game{game_id}")
+
+board = db.reference(f"/games/game{game_id}/board")
+board_states = db.reference(f"/games/game{game_id}/board_states")
+
+castling_rights = db.reference(f"/games/game{game_id}/castling_rights")
+current_player = db.reference(f"/games/game{game_id}/current_player")
+en_passant_target = db.reference(f"/games/game{game_id}/en_passant_target")
+half_move_counter = db.reference(f"/games/game{game_id}/half_move_counter")
+last_move = db.reference(f"/games/game{game_id}/last_move")
+
 selected_piece = None
 selected_position = None
-current_player = 'w'
-en_passant_target = None
-castling_rights = {
-    'w': {'K': True, 'Q': True},
-    'b': {'K': True, 'Q': True}
-}
 valid_moves = []
-last_move = {'w': None, 'b': None}
-half_move_counter = 0
-board_states = []
-board = [
-    ["b_rook", "b_knight", "b_bishop", "b_queen", "b_king", "b_bishop", "b_knight", "b_rook"],
-    ["b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn", "b_pawn"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["--", "--", "--", "--", "--", "--", "--", "--"],
-    ["w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn", "w_pawn"],
-    ["w_rook", "w_knight", "w_bishop", "w_queen", "w_king", "w_bishop", "w_knight", "w_rook"]
-]
 
 
-async def push_gamestate(game_state,current_player, castling_rights, board, timers):
+async def push_gamestate(current_player, castling_rights, board, timers):
     pass
 
 async def pull_gamestate():
