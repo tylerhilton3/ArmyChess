@@ -12,15 +12,6 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def dbinit():
-    gamesnode = db.reference("games")
-    if gamesnode.get() is None:  # Explicitly check for None
-        print("Initializing 'games' node as it does not exist.")
-        gamesnode.set({})  # Create an empty 'games' node
-    else:
-        print("'games' node already exists.")
-
-
 def gameinit(game_id):
     with open('client/game.json', 'r') as file:
         data = json.load(file)
@@ -28,29 +19,39 @@ def gameinit(game_id):
     ref.set(data)
 
 def remove_old_games():
-    for gameid, gamedata in db.reference("games").get().items():
+    games_data = db.reference("games").get()
+    if games_data == None:
+        print("no games to remove")
+        return
+    for gameid, gamedata in games_data.items():
         connections = gamedata['connections']
         if connections.get('black') == False and connections.get('white') == False:
-            db.reference('games').child(f"game{gameid}").delete()
-            print(f'{game_id} has been deleted.')
+            gamedelete = db.reference('games').child(gameid)
+            gamedelete.delete()
+            print(f'{gameid} has been deleted.')
 
-dbinit()
 remove_old_games()
 
 ### Get a game id
+youareblack = False
 game_id = 0
 gameexist = True
 while gameexist:
     game_id += 1
-    current_game = db.reference(f"games/game{game_id}").get()
-    gameexist = bool(db.reference(f"games/game{game_id}").get())
+    game_ref = db.reference(f"games/game{game_id}")
+    current_game = game_ref.get()
+    gameexist = bool(current_game)
+    if gameexist and game_ref.child("connections").child("white").get():
+        gameexist = False
+        youareblack = True
+        print("YOU AREBLACKK")
 
-gameinit(game_id)
+if not youareblack:
+    print("initializing game because you're white")
+    gameinit(game_id)
 
-while True:
-    pass
 
-game = db.reference(f'/games/{game_id}')
+game = db.reference(f'/games/game{game_id}')
 whiteconn = db.reference(f"games/game{game_id}/connections/white")
 blackconn = db.reference(f"games/game{game_id}/connections/black")
 
@@ -85,6 +86,7 @@ else:
 
 
 print("Finished connecting!")
+print(f"you are player {player}")
 
 
 pg.init()
@@ -783,6 +785,13 @@ elif player == 2:
         draw_turn_indicator()
         draw_timers()
         pg.display.flip()
+
+
+# Remove connections
+if player == 1:
+    whiteconn.set(False)
+else:
+    blackconn.set(False)
 
 pg.quit()
 sys.exit()
