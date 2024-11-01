@@ -6,6 +6,9 @@ from firebase_admin import credentials, db
 import time as t
 import json
 
+
+### DATABASE SETUP
+
 cred = credentials.Certificate("client/firebaseprivatekey.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
@@ -32,7 +35,6 @@ def remove_old_games():
 
 remove_old_games()
 
-### Get a game id
 youareblack = False
 game_id = 0
 gameexist = True
@@ -89,13 +91,12 @@ print("Finished connecting!")
 print(f"you are player {player}")
 
 
+
+### DISPLAY
+
 pg.init()
 pg.mixer.init()
 pg.display.set_caption('Army Chess')
-
-
-
-### COLOR AND STYLES
 
 MIN_WIDTH, MIN_HEIGHT = 640, 480
 screen = pg.display.set_mode((1280, 720), pg.RESIZABLE)
@@ -120,21 +121,27 @@ LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
 
 ### TIMER
 
+WHITE_TIME = 300
+BLACK_TIME = 300
+
 last_tick = pg.time.get_ticks()
-whitetime = db.reference(f"/games/game{game_id}/timers/white")
-blacktime = db.reference(f"/games/game{game_id}/timers/black")
+whitetime_ref = db.reference(f"/games/game{game_id}/timers/white")
+blacktime_ref = db.reference(f"/games/game{game_id}/timers/black")
 
 def update_timers(player):
+    global last_tick, WHITE_TIME, BLACK_TIME
     current_tick = pg.time.get_ticks()
-    time_delta = (current_tick - last_tick) / 1000  
+    time_delta = (current_tick - last_tick) / 1000  # Convert to seconds
     last_tick = current_tick
 
     if player == 'w':
         WHITE_TIME -= time_delta
+        whitetime_ref.set(WHITE_TIME)  # Write updated white timer to Firebase
         if WHITE_TIME <= 0:
             end_game("Black wins on time!")
     else:
         BLACK_TIME -= time_delta
+        blacktime_ref.set(BLACK_TIME)  # Write updated black timer to Firebase
         if BLACK_TIME <= 0:
             end_game("White wins on time!")
 
@@ -740,7 +747,7 @@ if player == 1:
                 resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 handle_click(board, event.pos)
-        update_timers("w")
+        update_timers()
         draw_board()
         draw_pieces(board)
         draw_valid_moves()
