@@ -120,17 +120,16 @@ LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
 
 ### TIMER
 
-WHITE_TIME = 300
-BLACK_TIME = 300
 last_tick = pg.time.get_ticks()
+whitetime = db.reference(f"/games/game{game_id}/timers/white")
+blacktime = db.reference(f"/games/game{game_id}/timers/black")
 
-def update_timers():
-    global WHITE_TIME, BLACK_TIME, last_tick
+def update_timers(player):
     current_tick = pg.time.get_ticks()
     time_delta = (current_tick - last_tick) / 1000  
     last_tick = current_tick
 
-    if current_player == 'w':
+    if player == 'w':
         WHITE_TIME -= time_delta
         if WHITE_TIME <= 0:
             end_game("Black wins on time!")
@@ -209,12 +208,6 @@ selected_piece = None
 selected_position = None
 valid_moves = []
 
-
-async def push_gamestate(current_player, castling_rights, board, timers):
-    pass
-
-async def pull_gamestate():
-    pass
 
 def invert(board):
     return [row[::-1] for row in board[::-1]]
@@ -747,7 +740,7 @@ if player == 1:
                 resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 handle_click(board, event.pos)
-        update_timers()
+        update_timers("w")
         draw_board()
         draw_pieces(board)
         draw_valid_moves()
@@ -767,7 +760,7 @@ elif player == 2:
                 resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 handle_click(board, event.pos)
-        update_timers()
+        update_timers("b")
         draw_board()
         draw_pieces(invert(board))
         draw_valid_moves()
