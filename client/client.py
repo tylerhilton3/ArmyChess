@@ -46,7 +46,6 @@ while gameexist:
         youareblack = True
 
 if not youareblack:
-    print("initializing game because you're white")
     gameinit(game_id)
 
 
@@ -84,7 +83,6 @@ else:
 
 
 print("Finished connecting!")
-print(f"you are player {player}")
 
 
 
@@ -185,7 +183,6 @@ def gameupdate(event):
     last_move = gref.child("last_move").get()
     half_move_counter = gref.child("half_move_counter").get()
     board_states = gref.child("board_states").get()
-    print("OMG SOMETHING HAPPENEDDDDDD")
 
 gameupdate("wheeeeeeee")
 gameupdate_listener = gref.listen(gameupdate)
@@ -524,7 +521,6 @@ def get_valid_moves(piece, position):
                 target_piece = flipboard[row][col]
                 move_type = 'move' if target_piece == '--' else 'capture'
                 valid_moves.append(((row, col), move_type))
-    print(valid_moves)
     return valid_moves
 
 
@@ -673,23 +669,13 @@ if player == 1:
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if current_player == 'w':
                     handle_click(event.pos)
-        # print("JUST FINISHED EVENTSSSS NOW I RUN TIMER UPDATTTEEE")
-        # update_timers()
-        # print("JUST FINISH UPDATE TIMERS NOW IM GOING TO DRAW BOARDDDD")
         draw_board()
-        # print("JUST FINISH DRAW BOARD NOW I DRAW PIECES")
         draw_pieces(board)
-        # print("JUST DREW ALL THE SHIT NOW IM GONNA DRAW THE VALID MOVESS")
         draw_valid_moves()
-        # print("JUST DREW ALL THE VALID MOVES NOW IM DRAWING THE TURN INDICATOR")
         draw_turn_indicator()
-        # print("JUST DREW TURN INDICATOR NOW I DRAW TIMER")
-        # draw_timers()
-        # print("YAYYYYY ALL DONE NOW I DO BACKFLIP")
         pg.display.flip()
 elif player == 2:
     while running:
-        # print("IM GONNA RUN events!!!!")
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
@@ -702,17 +688,10 @@ elif player == 2:
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if current_player == 'b':
                     handle_click(event.pos)
-        # print("JUST FINISHED EVENTSSSS NOW I RUN draw board")
         draw_board()
-        # print("JUST FINISH DRAW BOARD NOW I DRAW PIECES")
         draw_pieces(board)
-        # print("JUST DREW ALL THE SHIT NOW IM GONNA DRAW THE VALID MOVESS")
         draw_valid_moves()
-        # print("JUST DREW ALL THE VALID MOVES NOW IM DRAWING THE TURN INDICATOR")
         draw_turn_indicator()
-        # print("JUST DREW TURN INDICATOR NOW I DRAW TIMER")
-        # draw_timers()
-        # print("YAYYYYY ALL DONE NOW I DO BACKFLIP")
         pg.display.flip()
 
 
