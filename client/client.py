@@ -24,14 +24,13 @@ def gameinit(game_id):
 def remove_old_games():
     games_data = db.reference("games").get()
     if games_data == None:
-        print("no games to remove")
         return
     for gameid, gamedata in games_data.items():
         connections = gamedata['connections']
         if connections.get('black') == False and connections.get('white') == False:
             gamedelete = db.reference('games').child(gameid)
             gamedelete.delete()
-            print(f'{gameid} has been deleted.')
+            print(f'game{gameid} has been deleted.')
 
 remove_old_games()
 
@@ -41,12 +40,10 @@ gameexist = True
 while gameexist:
     game_id += 1
     game_ref = db.reference(f"games/game{game_id}")
-    current_game = game_ref.get()
-    gameexist = bool(current_game)
-    if gameexist and game_ref.child("connections").child("white").get():
+    gameexist = bool(game_ref.get())
+    if gameexist and game_ref.child("connections").child("white").get() and not game_ref.child("connections").child("black").get():
         gameexist = False
         youareblack = True
-        print("YOU AREBLACKK")
 
 if not youareblack:
     print("initializing game because you're white")
@@ -65,9 +62,8 @@ if not whiteconn.get():
     opp = 2
     print(f"You are White.")
     whiteconn.set(True)
+    print("Waiting for Black...")
     while not blackconnected:
-        t.sleep(1.5)
-        print("Waiting for Black...")
         blackconnected = blackconn.get()
 else:
     player = 2
@@ -116,34 +112,6 @@ LIGHT_GRAY = (204, 184, 151)
 DARK_GRAY = (158, 116, 84)
 DARK_GRAY_HIGHLIGHT = (188, 168, 64)
 LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
-
-
-
-### TIMER
-
-WHITE_TIME = 300
-BLACK_TIME = 300
-
-last_tick = pg.time.get_ticks()
-whitetime_ref = db.reference(f"/games/game{game_id}/timers/white")
-blacktime_ref = db.reference(f"/games/game{game_id}/timers/black")
-
-def update_timers(player):
-    global last_tick, WHITE_TIME, BLACK_TIME
-    current_tick = pg.time.get_ticks()
-    time_delta = (current_tick - last_tick) / 1000  # Convert to seconds
-    last_tick = current_tick
-
-    if player == 'w':
-        WHITE_TIME -= time_delta
-        whitetime_ref.set(WHITE_TIME)  # Write updated white timer to Firebase
-        if WHITE_TIME <= 0:
-            end_game("Black wins on time!")
-    else:
-        BLACK_TIME -= time_delta
-        blacktime_ref.set(BLACK_TIME)  # Write updated black timer to Firebase
-        if BLACK_TIME <= 0:
-            end_game("White wins on time!")
 
 
 
@@ -200,24 +168,27 @@ set_master_volume(0.2)
 
 ### BOARD AND GAME DATA
 
-gref = db.reference(f"/games/game{game_id}")
-
-board = db.reference(f"/games/game{game_id}/board")
-board_states = db.reference(f"/games/game{game_id}/board_states")
-
-castling_rights = db.reference(f"/games/game{game_id}/castling_rights")
-current_player = db.reference(f"/games/game{game_id}/current_player")
-en_passant_target = db.reference(f"/games/game{game_id}/en_passant_target")
-half_move_counter = db.reference(f"/games/game{game_id}/half_move_counter")
-last_move = db.reference(f"/games/game{game_id}/last_move")
-
+def invert(inputboard):
+    return [row[::-1] for row in inputboard[::-1]]
+    
 selected_piece = None
 selected_position = None
-valid_moves = []
 
+gref = db.reference(f"/games/game{game_id}")
 
-def invert(board):
-    return [row[::-1] for row in board[::-1]]
+def gameupdate(event):
+    global current_player, castling_rights, board, en_passant_target, last_move, half_move_counter, board_states
+    current_player = gref.child("current_player").get()
+    castling_rights = gref.child("castling_rights").get()
+    board = gref.child("board").get() if player == 1 else invert(gref.child("board").get())
+    en_passant_target = gref.child("en_passant_target").get()
+    last_move = gref.child("last_move").get()
+    half_move_counter = gref.child("half_move_counter").get()
+    board_states = gref.child("board_states").get()
+    print("OMG SOMETHING HAPPENEDDDDDD")
+
+gameupdate("wheeeeeeee")
+gameupdate_listener = gref.listen(gameupdate)
 
 def store_board_state(board):
     board_string = ''.join([''.join(row) for row in board]) + current_player
@@ -269,53 +240,6 @@ def draw_pieces(board):
             piece = board[row][col]
             if piece != '--':
                 screen.blit(pieces[piece], (board_x + col * SQUARE_SIZE, board_y + row * SQUARE_SIZE))
-
-def draw_timers():
-    white_minutes = int(WHITE_TIME // 60)
-    white_seconds = int(WHITE_TIME % 60)
-    black_minutes = int(BLACK_TIME // 60)
-    black_seconds = int(BLACK_TIME % 60)
-
-    white_time_text = f"White: {white_minutes:02}:{white_seconds:02}"
-    black_time_text = f"Black: {black_minutes:02}:{black_seconds:02}"
-
-    
-    white_timer_surface = font.render(white_time_text, True, WHITE)
-    black_timer_surface = font.render(black_time_text, True, BLACK)
-
-    
-    white_timer_rect = white_timer_surface.get_rect(topleft=(20, 60))  
-    black_timer_rect = black_timer_surface.get_rect(topleft=(20, 100))  
-
-    
-    padding = 10
-    white_bg_rect = pg.Rect(
-        white_timer_rect.left - padding // 2,
-        white_timer_rect.top - padding // 2,
-        white_timer_rect.width + padding,
-        white_timer_rect.height + padding
-    )
-    black_bg_rect = pg.Rect(
-        black_timer_rect.left - padding // 2,
-        black_timer_rect.top - padding // 2,
-        black_timer_rect.width + padding,
-        black_timer_rect.height + padding
-    )
-
-    
-    white_bg_surface = pg.Surface(white_bg_rect.size)
-    white_bg_surface.fill(DARK_BROWN)  
-
-    black_bg_surface = pg.Surface(black_bg_rect.size)
-    black_bg_surface.fill(DARK_BROWN)
-
-    
-    screen.blit(white_bg_surface, white_bg_rect.topleft)
-    screen.blit(black_bg_surface, black_bg_rect.topleft)
-
-    
-    screen.blit(white_timer_surface, white_timer_rect.topleft)
-    screen.blit(black_timer_surface, black_timer_rect.topleft)
 
 def draw_turn_indicator():
     text = f"{'White' if current_player == 'w' else 'Black'}'s Turn"
@@ -397,7 +321,7 @@ def is_in_check(player_color, board):
             piece = board[row][col]
             if piece.startswith(opponent_color):
                 
-                if is_valid_move(piece, (row, col), king_position, board, check_check=False):
+                if is_valid_move(piece, (row, col), king_position, check_check=False):
                     return True
     return False
 
@@ -409,7 +333,7 @@ def is_checkmate(player_color, board):
         for col in range(8):
             piece = board[row][col]
             if piece.startswith(player_color):
-                valid_moves = get_valid_moves(piece, (row, col), board)
+                valid_moves = get_valid_moves(piece, (row, col))
                 for move in valid_moves:
                     end_pos, _ = move
                     new_board = [r.copy() for r in board]
@@ -426,7 +350,7 @@ def is_stalemate(player_color, board):
         for col in range(8):
             piece = board[row][col]
             if piece.startswith(player_color):
-                valid_moves = get_valid_moves(piece, (row, col), board)
+                valid_moves = get_valid_moves(piece, (row, col))
                 if valid_moves:
                     return False
     return True
@@ -500,7 +424,7 @@ def promote_pawn(color):
                 pg.quit()
                 sys.exit()
 
-def is_valid_move(piece, start, end, board, check_check=True):
+def is_valid_move(piece, start, end, check_check=True):
     global en_passant_target
     if start == end:
         return False
@@ -513,11 +437,11 @@ def is_valid_move(piece, start, end, board, check_check=True):
         return False
     valid = False
     if piece_type == 'pawn':
-        direction = -1 if piece_color == 'w' else 1
+        direction = -1
         if start_col == end_col and board[end_row][end_col] == '--':
             if end_row == start_row + direction:
                 valid = True
-            elif (start_row == 1 and piece_color == 'b') or (start_row == 6 and piece_color == 'w'):
+            elif start_row == 6:
                 if end_row == start_row + 2 * direction and board[start_row + direction][start_col] == '--':
                     valid = True
         elif abs(start_col - end_col) == 1 and end_row == start_row + direction:
@@ -591,22 +515,21 @@ def is_valid_move(piece, start, end, board, check_check=True):
             return False
     return valid
 
-def get_valid_moves(piece, position, board):
+def get_valid_moves(piece, position):
+    flipboard = invert(board) if player == 2 else board
     valid_moves = []
     for row in range(8):
         for col in range(8):
-            if is_valid_move(piece, position, (row, col), board):
-                target_piece = board[row][col]
+            if is_valid_move(piece, position, (row, col)):
+                target_piece = flipboard[row][col]
                 move_type = 'move' if target_piece == '--' else 'capture'
                 valid_moves.append(((row, col), move_type))
-
-    
+    print(valid_moves)
     return valid_moves
 
 
 
 ### GAME FUNCTIONALITY
-
 
 def wait_for_click():
     waiting = True
@@ -620,7 +543,7 @@ def end_game(message):
     draw_endgame_message(message)
     wait_for_click()
 
-def handle_click(board, pos):
+def handle_click(pos):
     global selected_piece, selected_position, current_player, en_passant_target, castling_rights, valid_moves, half_move_counter
     board_x, board_y = [(screen.get_width() - 8 * SQUARE_SIZE) // 2, (screen.get_height() - 8 * SQUARE_SIZE) // 2]
     x, y = pos
@@ -633,9 +556,9 @@ def handle_click(board, pos):
         if piece_at_square != '--' and piece_at_square[0] == current_player:
             selected_piece = piece_at_square
             selected_position = (row, col)
-            valid_moves = get_valid_moves(selected_piece, selected_position, board)
+            valid_moves = get_valid_moves(selected_piece, selected_position)
         elif selected_piece:
-            valid_move = is_valid_move(selected_piece, selected_position, (row, col), board)
+            valid_move = is_valid_move(selected_piece, selected_position, (row, col))
             if valid_move:
                 target_piece = board[row][col]  
                 en_passant_capture = False
@@ -713,7 +636,8 @@ def handle_click(board, pos):
                     end_game("Draw by 3-fold repetition!")
 
                 
-                current_player = 'b' if current_player == 'w' else 'w'
+                
+                
                 piece_type = selected_piece[2:]
                 if piece_type == 'pawn' and abs(selected_position[0] - row) == 2:
                     en_passant_target = ((selected_position[0] + row) // 2, selected_position[1])
@@ -723,11 +647,12 @@ def handle_click(board, pos):
             selected_piece = None
             selected_position = None
             valid_moves = []
-        else:
-            if board[row][col] != '--' and board[row][col][0] == current_player:
-                selected_piece = board[row][col]
-                selected_position = (row, col)
-                valid_moves = get_valid_moves(selected_piece, selected_position, board)
+            if player == 1:
+                gref.child("board").set(board)
+            else:
+                gref.child("board").set(invert(board))
+            current_player = 'b' if current_player == 'w' else 'w'
+            gref.child("current_player").set(current_player)
 
 
 
@@ -746,16 +671,25 @@ if player == 1:
                 background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
                 resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                handle_click(board, event.pos)
-        update_timers()
+                if current_player == 'w':
+                    handle_click(event.pos)
+        # print("JUST FINISHED EVENTSSSS NOW I RUN TIMER UPDATTTEEE")
+        # update_timers()
+        # print("JUST FINISH UPDATE TIMERS NOW IM GOING TO DRAW BOARDDDD")
         draw_board()
+        # print("JUST FINISH DRAW BOARD NOW I DRAW PIECES")
         draw_pieces(board)
+        # print("JUST DREW ALL THE SHIT NOW IM GONNA DRAW THE VALID MOVESS")
         draw_valid_moves()
+        # print("JUST DREW ALL THE VALID MOVES NOW IM DRAWING THE TURN INDICATOR")
         draw_turn_indicator()
-        draw_timers()
+        # print("JUST DREW TURN INDICATOR NOW I DRAW TIMER")
+        # draw_timers()
+        # print("YAYYYYY ALL DONE NOW I DO BACKFLIP")
         pg.display.flip()
 elif player == 2:
     while running:
+        # print("IM GONNA RUN events!!!!")
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
@@ -766,13 +700,19 @@ elif player == 2:
                 background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
                 resize_pieces()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                handle_click(board, event.pos)
-        update_timers("b")
+                if current_player == 'b':
+                    handle_click(event.pos)
+        # print("JUST FINISHED EVENTSSSS NOW I RUN draw board")
         draw_board()
-        draw_pieces(invert(board))
+        # print("JUST FINISH DRAW BOARD NOW I DRAW PIECES")
+        draw_pieces(board)
+        # print("JUST DREW ALL THE SHIT NOW IM GONNA DRAW THE VALID MOVESS")
         draw_valid_moves()
+        # print("JUST DREW ALL THE VALID MOVES NOW IM DRAWING THE TURN INDICATOR")
         draw_turn_indicator()
-        draw_timers()
+        # print("JUST DREW TURN INDICATOR NOW I DRAW TIMER")
+        # draw_timers()
+        # print("YAYYYYY ALL DONE NOW I DO BACKFLIP")
         pg.display.flip()
 
 

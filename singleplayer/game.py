@@ -535,7 +535,7 @@ def end_game(message):
     draw_endgame_message(message)
     wait_for_click()
 
-def handle_click(board, pos):
+def handle_click(pos):
     global selected_piece, selected_position, current_player, en_passant_target, castling_rights, valid_moves, half_move_counter
     board_x, board_y = [(screen.get_width() - 8 * SQUARE_SIZE) // 2, (screen.get_height() - 8 * SQUARE_SIZE) // 2]
     x, y = pos
@@ -638,11 +638,6 @@ def handle_click(board, pos):
             selected_piece = None
             selected_position = None
             valid_moves = []
-        else:
-            if board[row][col] != '--' and board[row][col][0] == current_player:
-                selected_piece = board[row][col]
-                selected_position = (row, col)
-                valid_moves = get_valid_moves(selected_piece, selected_position, board)
 
 
 
@@ -660,7 +655,7 @@ while running:
             background = pg.transform.smoothscale(pg.image.load('singleplayer/images/woodbackground.jpeg'), (screen.get_width(), screen.get_height()))
             resize_pieces()
         elif event.type == pg.MOUSEBUTTONDOWN:
-            handle_click(board, event.pos)
+            handle_click(event.pos)
     update_timers()
     draw_board()
     draw_pieces(board)
