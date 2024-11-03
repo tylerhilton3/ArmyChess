@@ -3,13 +3,25 @@ import sys
 import os
 import firebase_admin
 from firebase_admin import credentials, db
-import time as t
 import json
 
 
-### DATABASE SETUP
+###################### DATABASE SETUP ######################
 
-cred = credentials.Certificate("client/firebaseprivatekey.json")
+'''
+
+If you want to setup your own database to play this game online:
+
+1. Create "firebaseprivatekey.json" in the client folder and paste the
+credentials from your firebase console.
+
+2. Replace "army-chess-default-rtdb" with your database name from the console.
+
+'''
+
+
+
+cred = credentials.Certificate("client/firebaseprivatekey.json") 
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://army-chess-default-rtdb.firebaseio.com/'
 })
@@ -86,7 +98,7 @@ print("Finished connecting!")
 
 
 
-### DISPLAY
+###################### DISPLAY ######################
 
 pg.init()
 pg.mixer.init()
@@ -113,7 +125,7 @@ LIGHT_GRAY_HIGHLIGHT = (211, 201, 97)
 
 
 
-### IMAGES
+###################### IMAGES AND SOUND ######################
 
 def load_image(name):
     return pg.image.load(f'singleplayer/images/{name}.png').convert_alpha()
@@ -137,8 +149,6 @@ pieces = original_pieces.copy()
 iconpath = "client/assets/images/icon64.ico"
 icon = pg.image.load(iconpath)
 pg.display.set_icon(icon)
-
-### SOUND
 
 def load_sound(name, goofy):
     filepath = f'singleplayer/sounds{goofy*"goofy"}/{name}.mp3'
@@ -164,7 +174,7 @@ set_master_volume(0.2)
 
 
 
-### BOARD AND GAME DATA
+###################### BOARD AND GAME DATA ######################
 
 def invert(inputboard):
     return [row[::-1] for row in inputboard[::-1]]
@@ -201,7 +211,7 @@ resize_pieces()
 
 
 
-### DRAWING FUNCTIONS
+###################### DRAWING FUNCTIONS ######################
 
 def draw_board():
     screen.blit(background, (0, 0))
@@ -296,7 +306,7 @@ def draw_endgame_message(message):
 
 
 
-### GAME LOGIC
+###################### GAME LOGIC ######################
 
 def is_in_check(player_color, board):
     king_position = None
@@ -525,7 +535,7 @@ def get_valid_moves(piece, position):
 
 
 
-### GAME FUNCTIONALITY
+###################### GAME FUNCTIONALITY ######################
 
 def wait_for_click():
     waiting = True
@@ -652,7 +662,7 @@ def handle_click(pos):
 
 
 
-### MAIN GAME LOOP
+###################### MAIN GAME LOOP ######################
 
 running = True
 if player == 1:
